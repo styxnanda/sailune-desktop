@@ -39,7 +39,7 @@ Projects/
   sailune-desktop/
 ```
 
-The local `go.mod` replacement intentionally uses `../sailune-cli`, so ongoing core changes are immediately available to Desktop. CI checks out core commit `ecb8573391832b087ebce93d9072cbcab56cb259`. Update that pin deliberately when adopting later core APIs.
+The local `go.mod` replacement intentionally uses `../sailune-cli`, so ongoing core changes are immediately available to Desktop. CI checks out core commit `08acc674f338b32712b86aa7599966a16a503e40`. Update that pin deliberately when adopting later core APIs.
 
 Prerequisites: Go 1.25+, Node.js 22+, and the [Wails platform dependencies](https://wails.io/docs/gettingstarted/installation/). Windows needs WebView2. Ubuntu 24.04 needs GTK 3 and WebKitGTK 4.1 development packages:
 
@@ -99,7 +99,7 @@ Licensed under [GPL-3.0](LICENSE).
 
 Verified in the development workspace: TypeScript/Svelte checks (no warnings), production frontend build, Go race tests and vet, three Playwright interaction tests with synthetic bookmarks, and a successful Wails Windows AMD64 executable build including icon resources. The library screen was visually inspected.
 
-The Windows executable has not been launched on Windows, and Linux compilation/runtime validation still needs the included Ubuntu CI job or a Linux host. Real authenticated AO3/FFN access and OS credential dialogs have not been exercised by this desktop implementation. Request cancellation interrupts fetches; already committed local writes cannot be undone.
+The Ubuntu CI job has built and packaged the Linux app and smoke-tested its bundled CLI. Native desktop interaction on Windows and Linux still needs manual verification. A local Apple Silicon macOS app has been built and startup-tested with isolated storage. Real authenticated AO3/FFN access and OS credential dialogs have not been exercised by this desktop implementation. Request cancellation interrupts fetches; already committed local writes cannot be undone.
 
 ## Downloads include the CLI
 

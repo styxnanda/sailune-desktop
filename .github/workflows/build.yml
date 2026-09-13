@@ -29,7 +29,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: styxnanda/sailune-go
-          ref: ecb8573391832b087ebce93d9072cbcab56cb259
+          ref: 08acc674f338b32712b86aa7599966a16a503e40
           path: sailune-cli
       - uses: actions/setup-go@v5
         with:
