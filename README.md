@@ -39,7 +39,7 @@ Projects/
   sailune-desktop/
 ```
 
-The local `go.mod` replacement intentionally uses `../sailune-cli`, so ongoing core changes are immediately available to Desktop. CI checks out core commit `08acc674f338b32712b86aa7599966a16a503e40`. Update that pin deliberately when adopting later core APIs.
+The local `go.mod` replacement intentionally uses `../sailune-cli`, so ongoing core changes are immediately available to Desktop. CI checks out core commit `68e220e6049f0d8ffd28448941c22c28cac6cadb`. Update that pin deliberately when adopting later core APIs.
 
 Prerequisites: Go 1.25+, Node.js 22+, and the [Wails platform dependencies](https://wails.io/docs/gettingstarted/installation/). Windows needs WebView2. Ubuntu 24.04 needs GTK 3 and WebKitGTK 4.1 development packages:
 
