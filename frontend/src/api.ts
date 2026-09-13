@@ -6,7 +6,7 @@ export type Filter = {Query:string; Site:string; Status:string; Tag:string; Auth
 export const defaultFilter = ():Filter => ({Query:'',Site:'',Status:'',Tag:'',Author:'',Fandom:'',Language:'',SourceTag:'',Complete:null,Unread:false,MinRating:0,MinWords:0,MaxWords:0,Sort:'added',Desc:true,Limit:50,Offset:0});
 export const statuses = ['planned','reading','completed','hold','dropped'];
 export const statusLabel = (s:string) => ({planned:'To read',reading:'Reading',completed:'Completed',hold:'On hold',dropped:'Dropped'}[s] || s);
-declare global { interface Window { go?:{main:{App:{Call:(a:string,p:string)=>Promise<string>; Open:(a:string,p:string)=>Promise<void>; Pick:(k:string)=>Promise<string>; Confirm:(message:string)=>Promise<boolean>; Cancel:()=>Promise<void>}}} } }
+declare global { interface Window { go?:{main:{App:{Call:(a:string,p:string)=>Promise<string>; Open:(a:string,p:string)=>Promise<void>; Pick:(k:string)=>Promise<string>; Copy:(action:string,payload:string)=>Promise<void>; Confirm:(message:string)=>Promise<boolean>; Cancel:()=>Promise<void>}}} } }
 function bridge() { const app=window.go?.main.App; if(!app) throw new Error('The desktop connection is unavailable. Launch Sailune with Wails to access your library.'); return app; }
 export async function call<T>(action:string, payload:unknown={}):Promise<T> { return JSON.parse(await bridge().Call(action,JSON.stringify(payload))); }
 export async function open(action:string,payload:unknown) { await bridge().Open(action,JSON.stringify(payload)); }
@@ -20,3 +20,4 @@ export function patchBetween(before:Bookmark, after:Bookmark):Record<string,unkn
 }
 
 export const confirmAction=(message:string)=>bridge().Confirm(message);
+export const copy=(action:string,payload:unknown)=>bridge().Copy(action,JSON.stringify(payload));

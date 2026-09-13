@@ -45,6 +45,8 @@ func (a *App) Pick(kind string) (string, error) {
 	case "directory":
 		return runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{Title: "Choose directory"})
 	case "database":
+		return runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{Title: "Choose a library"})
+	case "new-database":
 		return runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{Title: "Choose existing or new SQLite library", DefaultFilename: "library.sqlite3"})
 	default:
 		return runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{Title: "Choose file"})
@@ -55,4 +57,24 @@ func (a *App) Pick(kind string) (string, error) {
 func (a *App) Confirm(message string) (bool, error) {
 	answer, err := runtime.MessageDialog(a.ctx, runtime.MessageDialogOptions{Type: runtime.QuestionDialog, Title: "Sailune", Message: message, Buttons: []string{"Cancel", "Continue"}, DefaultButton: "Cancel", CancelButton: "Cancel"})
 	return answer == "Continue", err
+}
+
+// Copy only accepts core-resolved story links or a selected bookmark's data.
+func (a *App) Copy(action, payload string) error {
+	if action != "resolve" && action != "get" {
+		return errors.New("unsupported copy action")
+	}
+	result, err := a.service.Call(a.ctx, action, payload)
+	if err != nil {
+		return err
+	}
+	value, ok := result.(string)
+	if !ok {
+		data, err := json.MarshalIndent(result, "", "  ")
+		if err != nil {
+			return err
+		}
+		value = string(data)
+	}
+	return runtime.ClipboardSetText(a.ctx, value)
 }

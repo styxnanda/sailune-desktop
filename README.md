@@ -10,24 +10,24 @@ Desktop and the CLI are peer clients of the same Go library and SQLite store. De
 
 | CLI capability | Desktop location |
 | --- | --- |
-| Add with metadata fetching or offline/manual fields | Add bookmark; disable fetch for offline entry |
-| List, search, every CLI filter and sort | Library search, Filters, sort and pagination controls |
-| Show details and JSON fields | Select a story; Source tags & saved data |
-| Update title, author, status, progress, tags, notes, rating, review | Edit bookmark |
-| Added / last-read dates | Edit bookmark → Reading dates |
-| All source overrides and individual/all resets | Edit bookmark → Customize source metadata; uncheck fields to follow the source |
-| Refresh source metadata | Bookmark detail → Refresh metadata |
-| Open work, explicit chapter, resume next unread, print URL | Bookmark detail → Open/Resume and Chapter navigation |
-| Delete | Remove bookmark, followed by confirmation |
-| Site login and session status | Settings & transfers → Site sessions |
-| Chromium/Gecko profile imports and Netscape cookies.txt | Site sessions, with explicit import consent |
-| Clear or migrate legacy encrypted-session storage | Site sessions → Clear / Migrate a legacy session |
-| JSON export, restore, duplicate-skipping merge, legacy JSON migration | Settings & transfers → Portable snapshots |
-| Data/session path overrides and User-Agent | Settings & transfers → Library location |
+| Add automatically or offline | Save a story; switch off “Fill in the story details for me” for offline entry |
+| Search, every filter, sorting and pagination | Search your stories, shelf selector, Refine |
+| All bookmark and website fields | Open a story → A little more about this story; Copy all story details |
+| Personal title, author, shelf, progress, tags, notes, rating, review | Open a story → Make a note |
+| Added and last-read dates | Make a note → Remember the dates |
+| Every story-detail override and individual/all resets | Make a note → Personalize story details |
+| Refresh website details | Open a story → Check for updates |
+| Open work, chapter, next unread, resolve/copy links | Keep reading, Visit story, Find a particular chapter |
+| Delete | Remove from my collection, followed by confirmation |
+| Login, check connection, browser/profile import | Your space → Connected websites |
+| Session-file import, migration and clearing | Connected websites → Other ways to connect / Disconnect website |
+| Export, restore, merge and legacy library import | Your space → Save a backup / Bring in a collection |
+| Library and sign-in location overrides, custom User-Agent | Your space → Library & preferences |
+
 
 Browser import can be performed before adding or refreshing a story. Fetching reuses the selected site’s saved encrypted session. Opening a story never marks it read. Failed fetches preserve the form, and personal fields and overrides survive metadata refreshes.
 
-Lists use SQL pagination (20, 50, or 100 records), keeping rendering bounded. Reload or returning focus to the library refreshes external CLI changes. Forms submit only changed personal fields. If two clients edit the same field, the last successful write wins. Location changes last for the current desktop session; environment overrides persist across launches.
+Lists use SQL pagination (20, 50, 100, or 200 records), keeping rendering bounded. Refresh collection or returning focus to the library refreshes external CLI changes. Forms submit only changed personal fields. If two clients edit the same field, the last successful write wins. Location changes last for the current desktop session; environment overrides persist across launches.
 
 ## Development
 
@@ -97,7 +97,7 @@ Licensed under [GPL-3.0](LICENSE).
 
 ## Verification status
 
-Verified in the development workspace: TypeScript/Svelte checks (no warnings), production frontend build, Go race tests and vet, three Playwright interaction tests with synthetic bookmarks, and a successful Wails Windows AMD64 executable build including icon resources. The library screen was visually inspected.
+Verified in the development workspace: TypeScript/Svelte checks (no warnings), production frontend build, Go race tests and vet, six Playwright interaction tests with synthetic bookmarks, and a successful Wails Windows AMD64 executable build including icon resources. The bookshelf, editor, story, and preferences screens were visually inspected. Keyboard focus, Escape dismissal, reduced motion, failed-save recovery, explicit session consent, filtering, and zero-valued custom details are covered by the interaction tests.
 
 The Ubuntu CI job has built and packaged the Linux app and smoke-tested its bundled CLI. Native desktop interaction on Windows and Linux still needs manual verification. A local Apple Silicon macOS app has been built and startup-tested with isolated storage. Real authenticated AO3/FFN access and OS credential dialogs have not been exercised by this desktop implementation. Request cancellation interrupts fetches; already committed local writes cannot be undone.
 
@@ -121,3 +121,13 @@ sh scripts/build-macos-local.sh
 This builds for the Mac’s architecture and creates an ad-hoc-signed `Sailune.app` with the CLI inside `Contents/MacOS/sailune`. The output is under `build/staging/sailune-v0.1.0-darwin-ARCH/`; a local ZIP is under `build/packages/`. Open that `Sailune.app` to test. On Apple Silicon the architecture is `arm64`.
 
 This is the same Wails interface for development testing, not the planned SwiftUI client. The script is never invoked by GitHub Actions, and macOS assets are never included in the release workflow.
+
+## Reading-first interface
+
+The monochrome reading room uses a typographic bookshelf instead of a persistent sidebar or navigation bar. Large controls open focused dialogs for story notes, search refinements, and personal preferences. Website and storage terminology stays out of the main reading flow; the full core feature set remains available through plain-language choices.
+
+Short entrance/exit transitions, book hover reveals, progress changes, disclosure animation, and saved-state feedback provide motion without continuous decoration. The app respects the operating system’s reduced-motion setting. Press Ctrl/Cmd+K to search or Ctrl/Cmd+N to save a story.
+
+![Sailune reading room with synthetic sample stories](docs/reading-room.png)
+
+Preview uses synthetic test stories, not a personal library.

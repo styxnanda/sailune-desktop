@@ -1,42 +1,58 @@
 <script lang="ts">
  import {call,open,pick,confirmAction,type Config,type Session} from './api';
+ import Sheet from './Sheet.svelte';
+ import Icon from './Icon.svelte';
  export let config:Config;
  export let busy=false;
+ export let error='';
+ export let message='';
+ export let onclose:()=>void;
  export let run:(task:()=>Promise<void>)=>Promise<void>;
  export let notify:(message:string)=>void;
  export let onchange:(config:Config)=>Promise<void>;
- let draft={...config};
- let site='ao3', browser='chromium/chrome', profile='', consent=false;
- let session:Session|null=null;
- let transferPath='',merge=true;
+ let section='', draft={...config},site='ao3',browser='chromium/chrome',profile='',consent=false,session:Session|null=null,transferPath='',merge=true;
+ const names:Record<string,string>={connect:'Your connected worlds.',backup:'Keep a little peace of mind.',import:'Bring your stories along.',storage:'A home for your collection.'};
+ const filename=(path:string)=>path.split(/[\\/]/).pop()||path;
  const payload=()=>({Config:config,Site:site});
- async function choose(kind:string,set:(s:string)=>void) {const p=await pick(kind);if(p)set(p);}
- async function auth(action:string,path='') {
-  const result=await call<Session|null>(action,{...payload(),Path:path,Browser:browser+(profile?':'+profile:''),Consent:consent});
-  session=result;notify(action==='session-status'?'Session status checked.':'Session updated.');
+ async function choose(kind:string,set:(s:string)=>void){const p=await pick(kind);if(p)set(p);}
+ async function auth(action:string,path=''){
+  session=await call<Session|null>(action,{...payload(),Path:path,Browser:browser+(profile?':'+profile:''),Consent:consent});
+  notify(action==='session-status'?'Connection checked.':'Your sign-in is saved.');
  }
 </script>
-<div class="settings">
- <p class="eyebrow">MAKE YOURSELF AT HOME</p><h1>Settings & transfers</h1><p class="muted">One library, shared with Sailune-Go. Your stories stay on your device.</p>
+<Sheet title={names[section]||'Your space.'} subtitle={section?'':'A few thoughtful things to make yourself at home.'} {busy} {error} {message} {onclose}>
+ {#if section}<button class="text-button back-link" disabled={busy} onclick={()=>section=''}><Icon name="back"/>Your space</button>{/if}
  <fieldset disabled={busy}>
- <section class="panel"><h2>Library location</h2><p class="hint">Defaults match the CLI, including SAILUNE_DATA, SAILUNE_SESSIONS and SAILUNE_USER_AGENT. Changes apply to this desktop session.</p>
- <label>SQLite library<div class="input-action"><input bind:value={draft.Data}/><button onclick={()=>run(()=>choose('database',p=>draft.Data=p))}>Browse</button></div></label>
- <label>Encrypted session directory<div class="input-action"><input bind:value={draft.Sessions}/><button onclick={()=>run(()=>choose('directory',p=>draft.Sessions=p))}>Browse</button></div></label>
- <label>Request User-Agent<input bind:value={draft.UserAgent} placeholder="Sailune default"/></label>
- <button class="primary" onclick={()=>run(async()=>{await onchange({...draft});notify('Library location applied.');})}>Apply locations</button></section>
- <section class="panel"><h2>Site sessions</h2><p class="hint">Log in in your browser, then import cookies when ready. Only cookies for the selected site are imported; Sailune-Go encrypts them using your OS credential store.</p>
- <div class="form-grid"><label>Site<select bind:value={site} onchange={()=>{session=null;consent=false;}}><option value="ao3">Archive of Our Own</option><option value="ffn">FanFiction.net</option></select></label><div class="button-row"><button onclick={()=>run(()=>open('login',payload()))}>Open login page ↗</button><button onclick={()=>run(()=>auth('session-status'))}>Check session</button></div></div>
- {#if session}<p class="session-status">{session.configured?'Saved session':'No saved session'} · {session.usable_cookies} usable cookies <span class="hint">(does not verify server login)</span></p>{/if}
- <div class="form-grid"><label>Browser<select bind:value={browser}><option value="chromium/chrome">Chromium · Chrome</option><option value="chromium/edge">Chromium · Edge</option><option value="chromium/brave">Chromium · Brave</option><option value="chromium/chromium">Chromium</option><option value="chromium/vivaldi">Chromium · Vivaldi</option><option value="chromium/opera">Chromium · Opera</option><option value="gecko/firefox">Gecko · Firefox</option></select></label><label>Profile name or absolute path (optional)<input bind:value={profile} placeholder="Default, Profile 1, or /path/to/profile"/></label></div>
- <label class="check consent"><input type="checkbox" bind:checked={consent}/>I authorize importing cookies for this site into Sailune’s encrypted session store.</label>
- <div class="button-row"><button disabled={!consent} onclick={()=>run(()=>auth('session-browser'))}>Import from browser</button><button disabled={!consent} onclick={()=>run(async()=>{const p=await pick('file');if(p)await auth('session-file',p);})}>Import cookies.txt</button><button class="danger" onclick={()=>run(async()=>{if(await confirmAction('Clear the saved Sailune session for '+site+'? Your browser login stays unchanged.')){await call('session-clear',{...payload(),Consent:true});session=null;notify('Saved session cleared.');}})}>Clear session</button></div>
- <details><summary>Migrate a legacy session</summary><p class="hint">Choose the directory containing the old site JSON. Successful migration encrypts it and removes the original plaintext session file.</p><button onclick={()=>run(async()=>{const p=await pick('directory');if(p&&await confirmAction('Encrypt the '+site+' session from '+p+' and remove its original plaintext file?')){await call('session-migrate',{...payload(),Path:p,Consent:true});notify('Legacy session migrated.');}})}>Choose legacy directory</button></details>
- <p class="hint">Browser challenges may still block fetching. Windows app-bound (v20) cookies, KWallet, Firefox containers and partitioned cookies are unsupported by the core. Use a supported profile or Netscape export.</p></section>
- <section class="panel"><h2>Portable snapshots</h2><p class="hint">Export a closed JSON snapshot for backup or transfer. Live SQLite databases must stay local. Snapshots contain bookmarks and personal notes, never browser sessions.</p>
- <button onclick={()=>run(async()=>{const p=await pick('export');if(p){await call('export',{Config:config,Path:p});notify('Snapshot exported to '+p);}})}>Export library…</button>
- <hr/><label>Import snapshot or legacy JSON<div class="input-action"><input bind:value={transferPath} placeholder="Choose a Sailune JSON file"/><button onclick={()=>run(()=>choose('file',p=>transferPath=p))}>Browse</button></div></label>
- <label class="check"><input type="checkbox" bind:checked={merge}/>Merge into this library and skip duplicate stories</label><p class="hint">With merge disabled, import requires a pristine destination and preserves IDs. The source file is always kept.</p>
- <button disabled={!transferPath} onclick={()=>run(async()=>{const r=await call<{imported:number;skipped:number}>('import',{Config:config,Path:transferPath,Merge:merge});notify(`Imported ${r.imported} bookmarks; skipped ${r.skipped} duplicates.`);})}>Import snapshot</button></section>
- <p class="hint">Sailune Desktop 0.1.0 · Wails, Svelte & TypeScript · Powered by Sailune-Go<br/>Windows & Linux MVP. macOS SwiftUI is a separate, future client.</p>
+ {#if !section}
+  <div class="preference-list">
+   {#each [['connect','link','Connected websites','Keep your favorite worlds within reach.'],['backup','download','Save a backup','A safe copy of every story and note.'],['import','upload','Bring in a collection','Welcome your stories from another device.'],['storage','folder','Library & preferences','Choose where your collection feels at home.']] as [id,icon,title,description]}
+    <button class="preference" onclick={()=>section=id}><span class="preference-icon"><Icon name={icon} size={30}/></span><span><strong>{title}</strong><small>{description}</small></span><Icon name="arrow"/></button>
+   {/each}
+  </div><p class="quiet-caption">Sailune · 0.1.0<br/>A little space for the stories you love.</p>
+ {:else if section==='connect'}
+  <div class="site-choices">{#each [['ao3','Archive of Our Own'],['ffn','FanFiction.net']] as [id,label]}<button class:chosen={site===id} aria-pressed={site===id} onclick={()=>{site=id;session=null;consent=false;}}>{label}</button>{/each}</div>
+  <section class="connection-step"><span class="step-number">01</span><div><h3>Say hello to your account.</h3><p>Sign in on the website in your usual browser. Come back here when you’re ready.</p><button onclick={()=>run(()=>open('login',payload()))}>Open website<Icon name="external"/></button></div></section>
+  <section class="connection-step"><span class="step-number">02</span><div><h3>Bring your sign-in with you.</h3><label>Your browser<select bind:value={browser}>{#each [['chromium/chrome','Chrome'],['chromium/edge','Edge'],['chromium/brave','Brave'],['chromium/chromium','Chromium'],['chromium/vivaldi','Vivaldi'],['chromium/opera','Opera'],['gecko/firefox','Firefox']] as [id,name]}<option value={id}>{name}</option>{/each}</select></label>
+   <details class="disclosure"><summary>Use a different browser profile<Icon name="plus"/></summary><label>Profile name or folder<input bind:value={profile} placeholder="For example, Profile 1"/></label><button class="quiet" onclick={()=>run(()=>choose('directory',p=>profile=p))}><Icon name="folder"/>Choose profile folder</button></details>
+   <label class="toggle"><input type="checkbox" bind:checked={consent}/><span>Let Sailune use my sign-in for this website<small>Only this website’s sign-in cookies are copied and stored securely on your device.</small></span></label>
+   <button class="primary" disabled={!consent} onclick={()=>run(()=>auth('session-browser'))}>Connect account<Icon name="arrow"/></button>
+  </div></section>
+  <div class="connection-status"><Icon name={session?.configured?'check':'link'}/><div><strong>{session?session.configured?'Your sign-in is saved.':'No sign-in saved yet.':'Already connected?'}</strong>{#if session}<p>{session.usable_cookies} active sign-in cookies. The website may still ask you to sign in again.</p>{/if}</div><button class="text-button" onclick={()=>run(()=>auth('session-status'))}>Check</button></div>
+  <details class="disclosure"><summary>Other ways to connect<Icon name="plus"/></summary><p class="hint">You can also use a sign-in file exported from your browser (cookies.txt), or move an older Sailune sign-in.</p><div class="button-row"><button disabled={!consent} onclick={()=>run(async()=>{const p=await pick('file');if(p)await auth('session-file',p);})}><Icon name="upload"/>Use a sign-in file</button><button onclick={()=>run(async()=>{const p=await pick('directory');if(p&&await confirmAction('Move this older sign-in to Sailune? It will be stored securely and the old unprotected file will be removed.')){await call('session-migrate',{...payload(),Path:p,Consent:true});notify('Your older sign-in is ready.');}})}>Move an older sign-in</button></div><p class="hint">If a browser won’t connect, try a sign-in file or another browser. Some websites may still ask for a browser check.</p></details>
+  <button class="text-button danger" onclick={()=>run(async()=>{if(await confirmAction('Disconnect this website from Sailune? You’ll stay signed in to your browser.')){await call('session-clear',{...payload(),Consent:true});session=null;notify('Website disconnected.');}})}>Disconnect website</button>
+ {:else if section==='backup'}
+  <div class="ritual-icon"><Icon name="download" size={64}/></div><p class="lead">All your stories. All your notes.<br/>One copy to keep somewhere safe.</p><p class="hint">Save it on another device or in your cloud storage. Your website sign-ins stay private on this device.</p><button class="primary roomy" onclick={()=>run(async()=>{const p=await pick('export');if(p){await call('export',{Config:config,Path:p});notify('Your backup is saved.');}})}>Save a backup<Icon name="download"/></button>
+ {:else if section==='import'}
+  <div class="ritual-icon"><Icon name="upload" size={64}/></div><p class="lead">Your collection can come with you.</p><p class="hint">Choose a Sailune backup, including a collection saved with an older version.</p>
+  <button class="file-choice" onclick={()=>run(()=>choose('file',p=>transferPath=p))}><Icon name="folder" size={30}/><span>{transferPath?filename(transferPath):'Choose your backup'}</span><Icon name="plus"/></button>
+  <label class="toggle"><input type="checkbox" bind:checked={merge}/><span>Keep the stories I already have<small>New stories join your collection. Stories you’ve already saved are skipped.</small></span></label>{#if !merge}<p class="hint">Restoring a whole collection needs an empty library. You can choose one in Library & preferences. Your original backup is kept.</p>{/if}
+  <button class="primary roomy" disabled={!transferPath} onclick={()=>run(async()=>{const r=await call<{imported:number;skipped:number}>('import',{Config:config,Path:transferPath,Merge:merge});notify(`${r.imported} stories welcomed home.${r.skipped?` ${r.skipped} were already here.`:''}`);})}>Bring in my stories<Icon name="arrow"/></button>
+ {:else if section==='storage'}
+  <h3>Your library</h3><p class="hint">Sailune remembers your stories on this device. Choose another collection, or start somewhere new.</p><div class="file-location"><Icon name="book" size={30}/><span>{filename(draft.Data)||'Your collection'}</span></div>
+  <div class="button-row"><button onclick={()=>run(()=>choose('database',p=>draft.Data=p))}>Choose a library</button><button onclick={()=>run(()=>choose('new-database',p=>draft.Data=p))}><Icon name="plus"/>Start a new library</button></div>
+  <details class="disclosure"><summary>Choose exact locations<Icon name="plus"/></summary><label>Library file<input bind:value={draft.Data}/></label><label>Sign-in folder<div class="input-action"><input bind:value={draft.Sessions}/><button aria-label="Choose sign-in folder" onclick={()=>run(()=>choose('directory',p=>draft.Sessions=p))}><Icon name="folder"/></button></div></label><p class="hint">Keep these on this device. To move stories between devices, use a backup.</p></details>
+  <details class="disclosure"><summary>Website compatibility<Icon name="plus"/></summary><label>Custom browser identifier<input bind:value={draft.UserAgent} placeholder="Use Sailune’s default"/></label><p class="hint">Some websites need a particular browser identifier. Leave this empty unless you need a custom one.</p></details>
+  <button class="primary" onclick={()=>run(async()=>{await onchange({...draft});notify('Your library is ready.');})}>Use these preferences<Icon name="check"/></button><p class="hint">Location preferences apply until you close Sailune.</p>
+ {/if}
  </fieldset>
-</div>
+</Sheet>
