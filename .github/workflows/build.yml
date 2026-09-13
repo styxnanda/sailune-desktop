@@ -57,12 +57,12 @@ jobs:
           cd frontend
           npx playwright install --with-deps chromium
           npm test
-      - run: go test -race ./internal/desktop
-      - run: go vet ./internal/desktop
+      - run: python scripts/check.py go test -race ./internal/desktop
+      - run: python scripts/check.py go vet ./internal/desktop
       - name: Core tests
         run: |
           cd ../sailune-cli
-          go test ./...
+          python ../sailune-desktop/scripts/check.py go test ./...
       - run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.15.0
       - name: Build Windows
         if: runner.os == 'Windows'
