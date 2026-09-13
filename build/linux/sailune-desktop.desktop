@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Sailune
+Comment=Personal fanfiction bookmarks
+Exec=sailune-desktop
+Icon=sailune-desktop
+Terminal=false
+Categories=Office;Utility;
+StartupWMClass=sailune-desktop

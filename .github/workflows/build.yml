@@ -1,0 +1,126 @@
+name: Desktop checks and release builds
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  desktop:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: windows
+          - os: ubuntu-24.04
+            platform: linux
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: sailune-desktop
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: sailune-desktop
+      - uses: actions/checkout@v4
+        with:
+          repository: styxnanda/sailune-go
+          ref: ecb8573391832b087ebce93d9072cbcab56cb259
+          path: sailune-cli
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.x'
+          cache-dependency-path: |
+            sailune-desktop/go.sum
+            sailune-cli/go.sum
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: sailune-desktop/frontend/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Linux dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev build-essential pkg-config
+      - run: npm ci --prefix frontend
+      - run: npm --prefix frontend run check
+      - run: npm --prefix frontend run build
+      - name: Frontend interaction tests
+        if: runner.os == 'Linux'
+        run: |
+          cd frontend
+          npx playwright install --with-deps chromium
+          npm test
+      - run: go test -race ./internal/desktop
+      - run: go vet ./internal/desktop
+      - name: Core tests
+        run: |
+          cd ../sailune-cli
+          go test ./...
+      - run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.15.0
+      - name: Build Windows
+        if: runner.os == 'Windows'
+        run: wails build -platform windows/amd64
+      - name: Build Linux
+        if: runner.os == 'Linux'
+        run: wails build -tags webkit2_41 -platform linux/amd64
+      - name: Package desktop and CLI
+        env:
+          TARGET_PLATFORM: ${{ matrix.platform }}
+          RELEASE_REF: ${{ github.ref_name }}
+          REF_TYPE: ${{ github.ref_type }}
+        run: |
+          VERSION=v0.1.0
+          if [ "$REF_TYPE" = tag ]; then VERSION="$RELEASE_REF"; fi
+          python scripts/package.py --platform "$TARGET_PLATFORM" --arch amd64 --version "$VERSION"
+      - name: Verify bundled CLI
+        env:
+          TARGET_PLATFORM: ${{ matrix.platform }}
+        run: |
+          CLI=$(find build/staging -type f \( -name sailune -o -name sailune.exe \) | head -1)
+          "$CLI" --help
+          TEST_LIBRARY="$RUNNER_TEMP/sailune-smoke.sqlite3"
+          "$CLI" --data "$TEST_LIBRARY" add https://archiveofourown.org/works/123 --no-fetch --title 'Release smoke test'
+          "$CLI" --data "$TEST_LIBRARY" list --json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sailune-${{ matrix.platform }}-amd64
+          if-no-files-found: error
+          path: sailune-desktop/build/packages/*
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: desktop
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: sailune-*-amd64
+          merge-multiple: true
+          path: packages
+      - name: Publish release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          cat packages/*.sha256 > packages/SHA256SUMS
+          cat > release-notes.md <<'NOTES'
+          Early Sailune Desktop MVP for Windows and Linux.
+
+          Each download contains both Sailune Desktop and the standalone Sailune CLI. Extract the whole archive; no Go or Node.js installation is needed. Both programs use the same local library by default.
+
+          - Windows AMD64: ZIP archive; launch sailune-desktop.exe. Requires WebView2 Runtime.
+          - Linux AMD64: tar.gz archive built on Ubuntu 24.04; launch sailune-desktop or run sh install.sh to install both commands. Requires GTK 3 and WebKitGTK 4.1.
+          - Checksums are in SHA256SUMS.
+
+          These builds are unsigned. macOS is not a release target. This MVP bookmarks stories and metadata; it does not download full story text.
+          NOTES
+          gh release create "$RELEASE_TAG" packages/*.zip packages/*.tar.gz packages/SHA256SUMS --verify-tag --prerelease --title "Sailune Desktop $RELEASE_TAG" --notes-file release-notes.md

@@ -1,0 +1,13 @@
+.DS_Store
+frontend/node_modules/
+frontend/dist/
+frontend/wailsjs/
+build/bin/
+*.syso
+frontend/test-results/
+frontend/playwright-report/
+build/packages/
+build/staging/
+__pycache__/
+
+frontend/package.json.md5

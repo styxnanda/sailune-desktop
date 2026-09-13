@@ -1,0 +1,11 @@
+{
+ "$schema": "https://wails.io/schemas/config.v2.json",
+ "name": "Sailune",
+ "outputfilename": "sailune-desktop",
+ "frontend:install": "npm ci",
+ "frontend:build": "npm run build",
+ "frontend:dev:watcher": "npm run dev",
+ "frontend:dev:serverUrl": "auto",
+ "author": {"name": "Sailune"},
+ "info": {"companyName": "Sailune", "productName": "Sailune Desktop", "productVersion": "0.1.0", "copyright": "Sailune contributors", "comments": "Personal fanfiction bookmarks, powered by Sailune-Go"}
+}
