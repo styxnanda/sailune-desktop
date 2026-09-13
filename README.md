@@ -10,19 +10,19 @@ Desktop and the CLI are peer clients of the same Go library and SQLite store. De
 
 | CLI capability | Desktop location |
 | --- | --- |
-| Add automatically or offline | Save a story; switch off “Fill in the story details for me” for offline entry |
-| Search, every filter, sorting and pagination | Search your stories, shelf selector, Refine |
-| All bookmark and website fields | Open a story → A little more about this story; Copy all story details |
-| Personal title, author, shelf, progress, tags, notes, rating, review | Open a story → Make a note |
-| Added and last-read dates | Make a note → Remember the dates |
-| Every story-detail override and individual/all resets | Make a note → Personalize story details |
-| Refresh website details | Open a story → Check for updates |
-| Open work, chapter, next unread, resolve/copy links | Keep reading, Visit story, Find a particular chapter |
-| Delete | Remove from my collection, followed by confirmation |
-| Login, check connection, browser/profile import | Your space → Connected websites |
-| Session-file import, migration and clearing | Connected websites → Other ways to connect / Disconnect website |
-| Export, restore, merge and legacy library import | Your space → Save a backup / Bring in a collection |
-| Library and sign-in location overrides, custom User-Agent | Your space → Library & preferences |
+| Add automatically or offline | Add bookmark; switch off “Fetch details automatically” for offline entry |
+| Search, every filter, sorting and pagination | Search your stories, shelf selector, Filters |
+| All bookmark and website fields | Open a story → Details; Copy details |
+| Personal title, author, shelf, progress, tags, notes, rating, review | Open a story → Edit bookmark; chapter progress also saves directly on cards |
+| Added and last-read dates | Edit bookmark → Dates |
+| Every story-detail override and individual/all resets | Edit bookmark → Custom details |
+| Refresh website details | Open a story → Refresh details |
+| Open work, chapter, next unread, resolve/copy links | Read next, Open website, chapter carousel |
+| Delete | Remove bookmark, followed by confirmation |
+| Login, check connection, browser/profile import | Settings → Connected websites |
+| Session-file import, migration and clearing | Connected websites → Other methods / Disconnect website |
+| Export, restore, merge and legacy library import | Settings → Save a backup / Import collection |
+| Library and sign-in location overrides, custom User-Agent | Settings → Library |
 
 
 Browser import can be performed before adding or refreshing a story. Fetching reuses the selected site’s saved encrypted session. Opening a story never marks it read. Failed fetches preserve the form, and personal fields and overrides survive metadata refreshes.
@@ -122,12 +122,16 @@ This builds for the Mac’s architecture and creates an ad-hoc-signed `Sailune.a
 
 This is the same Wails interface for development testing, not the planned SwiftUI client. The script is never invoked by GitHub Actions, and macOS assets are never included in the release workflow.
 
-## Reading-first interface
+## Interface
 
-The monochrome reading room uses a typographic bookshelf instead of a persistent sidebar or navigation bar. Large controls open focused dialogs for story notes, search refinements, and personal preferences. Website and storage terminology stays out of the main reading flow; the full core feature set remains available through plain-language choices.
+A monochrome library with compact bookmark cards, search, and focused dialogs. Concise labels and large controls keep every core feature accessible without a persistent navigation bar.
 
-Short entrance/exit transitions, book hover reveals, progress changes, disclosure animation, and saved-state feedback provide motion without continuous decoration. The app respects the operating system’s reduced-motion setting. Press Ctrl/Cmd+K to search or Ctrl/Cmd+N to save a story.
+Cards include one-click chapter progress and an editable chapter number that saves on Enter or blur. The chapter carousel slides between numbers; click its number for open/link actions, or use Jump to for a specific chapter. Browsing chapters does not mark them read.
 
-![Sailune reading room with synthetic sample stories](docs/reading-room.png)
+Dropdowns use keyboard-accessible menus (arrows, type to search, Enter, Escape). Settings → Customize theme saves a light/dark preference on this device; the initial choice follows the system. Site icons are bundled locally.
 
-Preview uses synthetic test stories, not a personal library.
+Buttons and disclosures use subtle spring feedback; dialogs ease into view. The app respects reduced motion. Press Ctrl/Cmd+K to search or Ctrl/Cmd+N to add a bookmark.
+
+![Sailune library with synthetic sample bookmarks](docs/reading-room.png)
+
+Preview uses synthetic test bookmarks.
