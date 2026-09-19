@@ -39,7 +39,7 @@ Projects/
   sailune-desktop/
 ```
 
-The local `go.mod` replacement intentionally uses `../sailune-cli`, so ongoing core changes are immediately available to Desktop. CI checks out core commit `27cfc124fb9f5757e76c8704b9c94213f3f00a67`. Update that pin deliberately when adopting later core APIs.
+The local `go.mod` replacement intentionally uses `../sailune-cli`, so ongoing core changes are immediately available to Desktop. CI checks out core commit `84f0017bc00fc36d2666193d81b7d8a611331a18`. Update that pin deliberately when adopting later core APIs.
 
 Prerequisites: Go 1.25+, Node.js 22+, and the [Wails platform dependencies](https://wails.io/docs/gettingstarted/installation/). Windows needs WebView2. Ubuntu 24.04 needs GTK 3 and WebKitGTK 4.1 development packages:
 
@@ -141,6 +141,27 @@ Preview uses synthetic test bookmarks.
 The pinned shared core retries transient network failures and HTTP 525 with
 bounded exponential backoff, up to four attempts. Desktop keeps the core’s 30-second total deadline and its cancellation action.
 Login gates and browser challenges remain explicit failures; failed refreshes
-preserve saved metadata. See the [measured reliability report](https://github.com/styxnanda/sailune-go/blob/27cfc124fb9f5757e76c8704b9c94213f3f00a67/docs/scraping-reliability.md).
+preserve saved metadata. See the [measured reliability report](https://github.com/styxnanda/sailune-go/blob/84f0017bc00fc36d2666193d81b7d8a611331a18/docs/scraping-reliability.md).
 The live sample improved AO3 recovery but did not reach 90% across both sites
 because FFN continued to require browser challenges.
+
+### Experimental silent FFN browser prototype
+
+The local core now provides an on-demand headless Chrome/Chromium fallback for
+FFN challenges, with a separate `ffn-browser` profile below the session directory.
+It uses an installed browser, opens no windows, extracts only story headers, and
+closes browser processes after the attempt. HTTP gets at most 5 seconds before
+fallback; both paths share the core's 30-second deadline and existing cancellation.
+One recovery runs at a time, with a 60-second cooldown following failed recovery
+within the running service. Interactive verification is never requested or solved.
+A browser challenge can still prevent fetching. No 90% success claim is made.
+The experimental integration is included in the pinned shared core. Further FFN
+reliability work is on hold; no higher success rate is promised.
+
+### Shared mobile design
+
+Desktop uses the mobile reading-room typography and neutral theme tokens, a
+full-width Add story dock, rounded cards with colored status folds, faint
+light/dark site watermarks, and theme-matched sheets rising from the bottom.
+Keyboard focus, Escape, reduced motion, editing and progress controls remain
+covered by browser interaction tests.

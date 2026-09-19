@@ -11,7 +11,6 @@
  import Icon from './Icon.svelte';
  import Select from './Select.svelte';
  import Progress from './Progress.svelte';
- import SiteIcon from './SiteIcon.svelte';
  import './theme';
  import Feedback from './Feedback.svelte';
  let config:Config={Data:'',Sessions:'',UserAgent:''};
@@ -52,20 +51,23 @@
 <div use:interactions>
 <main class="reading-room" inert={overlay}>
  <section class="library-tools" aria-label="Library controls">
-  <div class="library-title"><img src="/sailune-icon.png" alt=""/><h1>Library</h1><span class="entry-count" aria-label="Bookmarks on this page">{entries.length}</span></div>
-  <div class="collection-actions"><button class="primary" disabled={!ready||busy} onclick={()=>showEditor(null)}><Icon name="plus" size={28}/>Add bookmark</button><button class="round" disabled={!ready||busy} onclick={()=>{settings=true;error='';}} aria-label="Settings" title="Settings"><Icon name="settings" size={28}/></button></div>
+  <div class="library-title"><img src="/sailune-icon.png" alt=""/><span class="brand-name">sailune</span><span class="entry-count" aria-label="Bookmarks on this page">{entries.length}</span></div>
+  <div class="collection-actions"><button class="round" disabled={!ready||busy} onclick={()=>{settings=true;error='';}} aria-label="Settings" title="Settings"><Icon name="settings" size={28}/></button></div>
  </section>
  <section class="collection" aria-label="Your collection">
+  <header class="room-heading"><h1>Your reading room</h1><p>A little space for the stories you love.</p></header>
   <form class="library-search" onsubmit={(e)=>{e.preventDefault();void search();}}><Icon name="search" size={26}/><input bind:this={searchInput} aria-label="Search your stories" bind:value={filter.Query} placeholder="Search title, author, tags…"/><button disabled={!ready||busy} aria-label="Search" class="round"><Icon name="arrow" size={26}/></button></form>
   <div class="collection-heading"><div class="shelf-picker"><Select label="Choose a shelf" disabled={busy||!ready} bind:value={filter.Status} onchange={()=>search()} options={[['','All bookmarks'],...statuses.map(s=>[s,statusLabel(s)])]}/></div><div class="collection-actions"><button class="round" disabled={busy||!ready} onclick={()=>search(false)} aria-label="Refresh collection" title="Refresh collection"><Icon name="refresh" size={26}/></button><button class="quiet" disabled={busy||!ready} onclick={()=>filters=true}><Icon name="sliders" size={25}/>Filters{#if refined}<span class="refined-dot"></span>{/if}</button>{#if refined}<button class="text-button" disabled={busy} onclick={()=>{filter=defaultFilter();void search();}}>Clear filters</button>{/if}</div></div>
   {#if !overlay}<Feedback {error}/>{/if}
   {#if !ready&&!busy}<button class="quiet" onclick={initialize}>Retry<Icon name="refresh"/></button>{/if}
   {#if busy&&!overlay&&progressSaving===null}<div class="inline-progress" role="status"><span class="spinner"></span>Loading…<button class="text-button" onclick={()=>void cancel()}>Stop</button></div>{/if}
   {#if entries.length===0&&busy}<div class="bookshelf skeleton-shelf" aria-hidden="true">{#each [1,2,3] as n}<div class="skeleton-book"></div>{/each}</div>
-  {:else if entries.length===0&&ready}<div class="empty" in:fly={{y:12,duration:duration(240)}}><Icon name={refined?'search':'bookmark'} size={48}/><h2>{refined?'No matches':'No bookmarks yet'}</h2><button class="primary" disabled={busy} onclick={()=>refined?(filter=defaultFilter(),void search()):showEditor(null)}>{refined?'Clear filters':'Add bookmark'}<Icon name="plus"/></button></div>
-  {:else}<div class="bookshelf">{#each entries as b,i(b.id)}<article class="book" animate:flip={{duration:duration(240)}} in:fly={{y:12,duration:duration(260),delay:duration(Math.min(i,7)*25)}} out:fade={{duration:duration(100)}}>
+  {:else if entries.length===0&&ready}<div class="empty" in:fly={{y:12,duration:duration(240)}}><Icon name={refined?'search':'bookmark'} size={48}/><h2>{refined?'No matches':'No bookmarks yet'}</h2><button class="primary" hidden={!refined} disabled={busy} onclick={()=>{filter=defaultFilter();void search();}}>{refined?'Clear filters':'Add story'}<Icon name="plus"/></button></div>
+  {:else}<div class="bookshelf">{#each entries as b,i(b.id)}<article class="book" data-status={b.status} animate:flip={{duration:duration(240)}} in:fly={{y:12,duration:duration(260),delay:duration(Math.min(i,7)*25)}} out:fade={{duration:duration(100)}}>
+   <span class="status-fold" title={statusLabel(b.status)}><span class="sr-only">{statusLabel(b.status)}</span></span>
+   <span class="site-watermark" class:ao3={b.site==='ao3'} class:ffn={b.site==='ffn'} aria-hidden="true"></span>
    <button class="bookmark-open" disabled={busy} aria-label={`Open ${b.title||b.effective.title||'Untitled story'}`} onclick={()=>select(b)}>
-    <div class="bookmark-meta"><SiteIcon site={b.site}/><span>{statusLabel(b.status)}</span>{#if b.rating}<span class="book-rating" aria-label={`${b.rating} stars`}><Icon name="star" size={18}/>{b.rating}</span>{/if}</div>
+    <div class="bookmark-meta"><span class="sr-only">{b.site==='ao3'?'Archive of Our Own':'FanFiction.net'}</span>{#if b.rating}<span class="book-rating" aria-label={`${b.rating} stars`}><Icon name="star" size={18}/>{b.rating}</span>{/if}</div>
     <h3>{b.title||b.effective.title||'Untitled story'}</h3><p class="bookmark-author">{b.author||'Unknown author'}</p>
 
    </button>
@@ -74,6 +76,7 @@
   </article>{/each}</div>{/if}
   {#if entries.length>0||filter.Offset>0}<div class="pagination"><button class="round" aria-label="Previous page" disabled={busy||filter.Offset===0} onclick={()=>{filter.Offset=Math.max(0,filter.Offset-filter.Limit);void search(false);}}><Icon name="back"/></button><span>Page {Math.floor(filter.Offset/filter.Limit)+1}</span><button class="round" aria-label="Next page" disabled={busy||entries.length<filter.Limit} onclick={()=>{filter.Offset+=filter.Limit;void search(false);}}><Icon name="arrow"/></button></div>{/if}
  </section>
+<footer class="add-story-dock"><button class="primary" disabled={!ready||busy} onclick={()=>showEditor(null)}><Icon name="plus" size={24}/>Add story</button></footer>
 </main>
 {#if notice&&!overlay}<div class="toast" role="status" transition:fly={{y:12,duration:duration(200)}}><Icon name="check"/>{notice}<button class="round" onclick={()=>notice=''} aria-label="Dismiss"><Icon name="close" size={20}/></button></div>{/if}
 {#if editor}<Editor bookmark={editing} {busy} {error} onsave={save} onclose={closeEditor}/>

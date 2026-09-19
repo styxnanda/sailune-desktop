@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/styxnanda/sailune-go/browser"
 	"os"
 	"path/filepath"
 	"sync"
@@ -43,9 +44,11 @@ func entry(b sailune.Bookmark) Entry { return Entry{b, b.EffectiveMetadata(), b.
 // A single active operation keeps cancellation unambiguous. SQLite remains the
 // inter-process authority; no GUI copy of bookmark state is persisted.
 type Service struct {
-	mu      sync.Mutex
-	cancel  context.CancelFunc
-	fetcher sailune.MetadataFetcher // optional injected transport for adapter tests
+	mu         sync.Mutex
+	cancel     context.CancelFunc
+	browser    *sailune.BrowserRecovery
+	browserDir string
+	fetcher    sailune.MetadataFetcher // optional injected transport for adapter tests
 }
 
 func (s *Service) Cancel() {
@@ -94,7 +97,11 @@ func (s *Service) Call(parent context.Context, action, payload string) (any, err
 	}
 	lib := sailune.Library{Store: sailune.Store{Path: r.Config.Data}}
 	sessions := sailune.SessionStore{Dir: r.Config.Sessions}
-	var scraper sailune.MetadataFetcher = &sailune.Scraper{Sessions: sessions, UserAgent: r.Config.UserAgent}
+	if s.browser == nil || s.browserDir != r.Config.Sessions {
+		s.browserDir = r.Config.Sessions
+		s.browser = &sailune.BrowserRecovery{Loader: &browser.Chromium{Profile: filepath.Join(r.Config.Sessions, "ffn-browser")}}
+	}
+	var scraper sailune.MetadataFetcher = &sailune.Scraper{Sessions: sessions, UserAgent: r.Config.UserAgent, Browser: s.browser}
 	if s.fetcher != nil {
 		scraper = s.fetcher
 	}

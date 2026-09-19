@@ -48,7 +48,7 @@ test('bookshelf and focused editing preserve untouched fields',async({page})=>{
 });
 
 test('failed save keeps the draft, and offline save stays available',async({page})=>{
- await page.getByRole('button',{name:'Add bookmark',exact:true}).click();
+ await page.getByRole('button',{name:'Add story',exact:true}).click();
  await page.getByLabel('Story link',{exact:true}).fill('https://archiveofourown.org/works/999');
  await page.getByLabel('Title',{exact:true}).fill('Keep this draft');
  await page.getByRole('button',{name:'Save story',exact:true}).click();
@@ -132,7 +132,7 @@ test('click feedback bounces and honors reduced motion',async({page})=>{
 
 test('compact window keeps controls reachable without horizontal overflow',async({page})=>{
  await page.setViewportSize({width:640,height:680});
- await expect(page.getByRole('button',{name:'Add bookmark',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Add story',exact:true})).toBeVisible();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
  await page.getByRole('button',{name:'Settings',exact:true}).click();
  await screenshot(page,'settings-compact');

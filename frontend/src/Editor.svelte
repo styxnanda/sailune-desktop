@@ -33,7 +33,7 @@
   draft.overrides=next as Partial<Metadata>;onsave(draft,patch,fetch);
  }
 </script>
-<Sheet title={bookmark?'Edit bookmark':'Add bookmark'} {busy} {error} {onclose}>
+<Sheet title={bookmark?'Edit bookmark':'Add story'} {busy} {error} {onclose}>
  <form onsubmit={(e)=>{e.preventDefault();save();}}>
   <fieldset disabled={busy}>
    {#if !bookmark}
