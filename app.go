@@ -2,8 +2,11 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
+	sailune "github.com/styxnanda/sailune-go"
+	"os"
 
 	"github.com/styxnanda/sailune-desktop/internal/desktop"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -40,8 +43,10 @@ func (a *App) Open(action, payload string) error {
 }
 func (a *App) Pick(kind string) (string, error) {
 	switch kind {
+	case "image":
+		return runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{Title: "Choose artwork", Filters: []runtime.FileFilter{{DisplayName: "JPEG or PNG", Pattern: "*.jpg;*.jpeg;*.png"}}})
 	case "export":
-		return runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{Title: "Export library snapshot", DefaultFilename: "sailune-backup.json", Filters: []runtime.FileFilter{{DisplayName: "JSON snapshot", Pattern: "*.json"}}})
+		return runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{Title: "Export library snapshot", DefaultFilename: "sailune-backup.zip", Filters: []runtime.FileFilter{{DisplayName: "Sailune backup", Pattern: "*.zip"}}})
 	case "directory":
 		return runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{Title: "Choose directory"})
 	case "database":
@@ -77,4 +82,32 @@ func (a *App) Copy(action, payload string) error {
 		value = string(data)
 	}
 	return runtime.ClipboardSetText(a.ctx, value)
+}
+
+func (a *App) ArtworkInfo(data string, id int64) (string, error) {
+	v, e := (sailune.Library{Store: sailune.Store{Path: data}}).Artwork(id)
+	if e != nil {
+		return "", e
+	}
+	b, e := json.Marshal(v)
+	return string(b), e
+}
+func (a *App) ArtworkData(data, asset string, small bool) (string, error) {
+	b, e := (sailune.Library{Store: sailune.Store{Path: data}}).ArtworkBytes(asset, small)
+	if e != nil {
+		return "", e
+	}
+	return "data:image/jpeg;base64," + base64.StdEncoding.EncodeToString(b), nil
+}
+func (a *App) PreviewArtwork(path, role string, x, y float64) (string, error) {
+	f, e := os.Open(path)
+	if e != nil {
+		return "", e
+	}
+	defer f.Close()
+	b, e := sailune.PreviewArtwork(f, role, x, y)
+	if e != nil {
+		return "", e
+	}
+	return "data:image/jpeg;base64," + base64.StdEncoding.EncodeToString(b), nil
 }

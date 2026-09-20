@@ -18,7 +18,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--platform', choices=['windows', 'linux', 'darwin'], required=True)
     parser.add_argument('--arch', choices=['amd64', 'arm64'], default='amd64')
-    parser.add_argument('--version', default='v0.1.0')
+    parser.add_argument('--version', default='v0.9.0')
     args = parser.parse_args()
     if not args.version.startswith('v') or any(c not in 'v0123456789.-abcdefghijklmnopqrstuvwxyz' for c in args.version):
         parser.error('version must be a simple v-prefixed release version')
@@ -69,7 +69,7 @@ No Go or Node.js installation is needed to run these binaries.
                          'The macOS test build is not a release platform or a SwiftUI client.\n')
         # Adding the CLI changes the bundle. Refresh the local ad-hoc signature.
         subprocess.run(['codesign', '--force', '--deep', '--sign', '-', str(stage / 'Sailune.app')], check=True)
-    instructions += ('\nKeep SQLite libraries local; use JSON export/import for transfers.\n'
+    instructions += ('\nKeep SQLite libraries local; use ZIP backup export/import for transfers.\n'
                      'The CLI and desktop store metadata, not full story text.\n'
                      'See https://github.com/styxnanda/sailune-desktop for usage and limitations.\n')
     (stage / 'README.txt').write_text(instructions)

@@ -6,6 +6,7 @@
  import Icon from './Icon.svelte';
  import Feedback from './Feedback.svelte';
  export let title='';
+ export let hideHeading=false;
  export let subtitle='';
  export let busy=false;
  export let error='';
@@ -22,7 +23,7 @@
 <dialog bind:this={dialog} class="sheet" class:wide oncancel={(e)=>{e.preventDefault();if(!busy)onclose();}} onclick={(e)=>{if(e.target===dialog&&!busy){const r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)onclose();}}} transition:fly={{y:80,duration:duration(360)}}>
  <div class="sheet-inner">
   <button class="round close-sheet" onclick={onclose} disabled={busy} aria-label="Close"><Icon name="close" size={26}/></button>
-  <header class="sheet-heading"><h2>{title}</h2>{#if subtitle}<p>{subtitle}</p>{/if}</header>
+  {#if !hideHeading}<header class="sheet-heading"><h2>{title}</h2>{#if subtitle}<p>{subtitle}</p>{/if}</header>{/if}
   <Feedback {error}/>
   {#if message}<p class="sheet-message" role="status"><Icon name="check"/>{message}</p>{/if}
   {#if busy}<div class="inline-progress" role="status"><span class="spinner"></span>Working…<button class="text-button" onclick={()=>void cancel()}>Stop</button></div>{/if}

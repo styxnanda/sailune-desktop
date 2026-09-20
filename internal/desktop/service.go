@@ -19,6 +19,7 @@ type Config struct {
 	UserAgent string
 }
 type Request struct {
+	Feature  sailune.OrganizeRequest
 	Config   Config
 	Filter   sailune.Filter
 	Bookmark sailune.Bookmark
@@ -106,6 +107,8 @@ func (s *Service) Call(parent context.Context, action, payload string) (any, err
 		scraper = s.fetcher
 	}
 	switch action {
+	case "organize":
+		return lib.Organize(r.Feature)
 	case "list":
 		if r.Filter.Limit == 0 {
 			r.Filter.Limit = 50
@@ -148,9 +151,9 @@ func (s *Service) Call(parent context.Context, action, payload string) (any, err
 		}
 		return lib.OpenURL(r.ID, r.Chapter)
 	case "export":
-		return nil, lib.ExportFile(r.Path)
+		return nil, lib.ExportArchiveFile(r.Path)
 	case "import":
-		return lib.ImportFile(r.Path, r.Merge)
+		return lib.ImportBackupFile(r.Path, r.Merge)
 	case "session-status":
 		return sessions.Status(r.Site)
 	case "login":

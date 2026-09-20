@@ -4,6 +4,10 @@
  import {flip} from 'svelte/animate';
  import {call,open,copy,cancel,defaultFilter,statuses,statusLabel,type Config,type Bookmark,type Filter} from './api';
  import {duration,interactions} from './motion';
+ import Artwork from './Artwork.svelte';
+ import Collections from './Collections.svelte';
+ import {coverMode} from './appearance';
+ import {feature,type Collection} from './api';
  import Editor from './Editor.svelte';
  import Settings from './Settings.svelte';
  import Filters from './Filters.svelte';
@@ -14,19 +18,21 @@
  import './theme';
  import Feedback from './Feedback.svelte';
  let config:Config={Data:'',Sessions:'',UserAgent:''};
+ let managing=false,collections:Collection[]=[];
  let ready=false,busy=false,error='',notice='';
  let progressSaving:number|null=null;
+ let artworkRevision=0;
  let filter=defaultFilter(),entries:Bookmark[]=[],selected:Bookmark|null=null;
  let editor=false,editing:Bookmark|null=null,settings=false,filters=false,resolved='';
  let lastDestination:Record<string,unknown>={};
  let searchInput:HTMLInputElement;
  let returnFocus:HTMLElement|null=null;
  let noticeTimer:ReturnType<typeof setTimeout>;
- $: overlay=editor||settings||filters||!!selected;
- $: refined=!!(filter.Query||filter.Site||filter.Status||filter.Tag||filter.Author||filter.Fandom||filter.Language||filter.SourceTag||filter.Complete!==null||filter.Unread||filter.MinRating||filter.MinWords||filter.MaxWords);
+ $: overlay=managing||editor||settings||filters||!!selected;
+ $: refined=!!(filter.Collection||filter.Query||filter.Site||filter.Status||filter.Tag||filter.Author||filter.Fandom||filter.Language||filter.SourceTag||filter.Complete!==null||filter.Unread||filter.MinRating||filter.MinWords||filter.MaxWords);
  function notify(s:string){notice=s;clearTimeout(noticeTimer);noticeTimer=setTimeout(()=>notice='',5000);}
  async function run(task:()=>Promise<void>){if(busy)return;busy=true;error='';notice='';try{await task();}catch(e){error=String(e);}finally{busy=false;}}
- async function load(){entries=await call<Bookmark[]>('list',{Config:config,Filter:filter});if(selected){try{selected=await call<Bookmark>('get',{Config:config,ID:selected.id});}catch{selected=null;}}}
+ async function load(){artworkRevision++;collections=await feature(config,{action:'collections'});if(filter.Collection&&!collections.some(c=>c.id===filter.Collection))filter.Collection='';entries=await call<Bookmark[]>('list',{Config:config,Filter:filter});if(selected){try{selected=await call<Bookmark>('get',{Config:config,ID:selected.id});}catch{selected=null;}}}
  async function initialize(){await run(async()=>{config=await call<Config>('defaults');await load();ready=true;});}
  async function search(reset=true){await run(async()=>{if(reset)filter.Offset=0;await load();});}
  function showEditor(b:Bookmark|null){if(!b)returnFocus=document.activeElement as HTMLElement;error='';editing=b;editor=true;}
@@ -41,7 +47,7 @@
  async function destination(resume:boolean,launch:boolean,chapter=0){if(!selected)return;await run(async()=>{const p={Config:config,ID:selected!.id,Resume:resume,Chapter:chapter};lastDestination=p;if(launch){await open('resolve',p);notify('Opened in browser.');}else resolved=await call<string>('resolve',p);});}
  async function copyDetails(data:boolean){if(!selected)return;await run(async()=>{await copy(data?'get':'resolve',data?{Config:config,ID:selected!.id}:lastDestination);notify(data?'Story details copied.':'Link copied.');});}
  async function select(b:Bookmark){returnFocus=document.activeElement as HTMLElement;resolved='';await run(async()=>{selected=await call<Bookmark>('get',{Config:config,ID:b.id});});}
- function closeStory(){selected=null;error='';setTimeout(()=>returnFocus?.isConnected&&returnFocus.focus(),duration(260));}
+ function closeStory(){selected=null;error='';void search(false);setTimeout(()=>returnFocus?.isConnected&&returnFocus.focus(),duration(260));}
  async function remove(){await run(async()=>{await call('delete',{Config:config,ID:selected!.id});selected=null;await load();notify('Bookmark removed.');});}
  async function applyFilters(f:Filter){filters=false;filter=f;await search(false);}
  function keydown(e:KeyboardEvent){if((e.metaKey||e.ctrlKey)&&e.key==='k'&&!overlay){e.preventDefault();searchInput?.focus();}if((e.metaKey||e.ctrlKey)&&e.key==='n'&&!overlay&&ready&&!busy){e.preventDefault();showEditor(null);}}
@@ -58,14 +64,15 @@
   <header class="room-heading"><h1>Your reading room</h1><p>A little space for the stories you love.</p></header>
   <form class="library-search" onsubmit={(e)=>{e.preventDefault();void search();}}><Icon name="search" size={26}/><input bind:this={searchInput} aria-label="Search your stories" bind:value={filter.Query} placeholder="Search title, author, tags…"/><button disabled={!ready||busy} aria-label="Search" class="round"><Icon name="arrow" size={26}/></button></form>
   <div class="collection-heading"><div class="shelf-picker"><Select label="Choose a shelf" disabled={busy||!ready} bind:value={filter.Status} onchange={()=>search()} options={[['','All bookmarks'],...statuses.map(s=>[s,statusLabel(s)])]}/></div><div class="collection-actions"><button class="round" disabled={busy||!ready} onclick={()=>search(false)} aria-label="Refresh collection" title="Refresh collection"><Icon name="refresh" size={26}/></button><button class="quiet" disabled={busy||!ready} onclick={()=>filters=true}><Icon name="sliders" size={25}/>Filters{#if refined}<span class="refined-dot"></span>{/if}</button>{#if refined}<button class="text-button" disabled={busy} onclick={()=>{filter=defaultFilter();void search();}}>Clear filters</button>{/if}</div></div>
+  <div class="collection-toolbar"><label>Collection<select aria-label="Collection" value={filter.Collection||''} disabled={busy} onchange={e=>{filter.Collection=e.currentTarget.value;void search();}}><option value="">All collections</option>{#each collections as c}<option value={c.id}>{c.name} · {c.count}{c.kind==='smart'?' · Automatic':''}</option>{/each}</select></label><button disabled={busy||!ready} onclick={()=>managing=true}>Manage collections</button></div>
   {#if !overlay}<Feedback {error}/>{/if}
   {#if !ready&&!busy}<button class="quiet" onclick={initialize}>Retry<Icon name="refresh"/></button>{/if}
   {#if busy&&!overlay&&progressSaving===null}<div class="inline-progress" role="status"><span class="spinner"></span>Loading…<button class="text-button" onclick={()=>void cancel()}>Stop</button></div>{/if}
   {#if entries.length===0&&busy}<div class="bookshelf skeleton-shelf" aria-hidden="true">{#each [1,2,3] as n}<div class="skeleton-book"></div>{/each}</div>
   {:else if entries.length===0&&ready}<div class="empty" in:fly={{y:12,duration:duration(240)}}><Icon name={refined?'search':'bookmark'} size={48}/><h2>{refined?'No matches':'No bookmarks yet'}</h2><button class="primary" hidden={!refined} disabled={busy} onclick={()=>{filter=defaultFilter();void search();}}>{refined?'Clear filters':'Add story'}<Icon name="plus"/></button></div>
-  {:else}<div class="bookshelf">{#each entries as b,i(b.id)}<article class="book" data-status={b.status} animate:flip={{duration:duration(240)}} in:fly={{y:12,duration:duration(260),delay:duration(Math.min(i,7)*25)}} out:fade={{duration:duration(100)}}>
+  {:else}<div class="bookshelf">{#each entries as b,i(b.id)}<article class="book" class:has-portrait={$coverMode==='portrait'} class:has-background={$coverMode==='background'} data-status={b.status} animate:flip={{duration:duration(240)}} in:fly={{y:12,duration:duration(260),delay:duration(Math.min(i,7)*25)}} out:fade={{duration:duration(100)}}>
    <span class="status-fold" title={statusLabel(b.status)}><span class="sr-only">{statusLabel(b.status)}</span></span>
-   <span class="site-watermark" class:ao3={b.site==='ao3'} class:ffn={b.site==='ffn'} aria-hidden="true"></span>
+   {#if $coverMode==='background'}<div class="card-background"><Artwork {config} id={b.id} site={b.site} role="background" revision={artworkRevision}/></div>{:else if $coverMode==='portrait'}<div class="card-portrait"><Artwork {config} id={b.id} site={b.site} revision={artworkRevision}/></div>{:else}<span class="site-watermark" class:ao3={b.site==='ao3'} class:ffn={b.site==='ffn'} aria-hidden="true"></span>{/if}
    <button class="bookmark-open" disabled={busy} aria-label={`Open ${b.title||b.effective.title||'Untitled story'}`} onclick={()=>select(b)}>
     <div class="bookmark-meta"><span class="sr-only">{b.site==='ao3'?'Archive of Our Own':'FanFiction.net'}</span>{#if b.rating}<span class="book-rating" aria-label={`${b.rating} stars`}><Icon name="star" size={18}/>{b.rating}</span>{/if}</div>
     <h3>{b.title||b.effective.title||'Untitled story'}</h3><p class="bookmark-author">{b.author||'Unknown author'}</p>
@@ -79,9 +86,10 @@
 <footer class="add-story-dock"><button class="primary" disabled={!ready||busy} onclick={()=>showEditor(null)}><Icon name="plus" size={24}/>Add story</button></footer>
 </main>
 {#if notice&&!overlay}<div class="toast" role="status" transition:fly={{y:12,duration:duration(200)}}><Icon name="check"/>{notice}<button class="round" onclick={()=>notice=''} aria-label="Dismiss"><Icon name="close" size={20}/></button></div>{/if}
-{#if editor}<Editor bookmark={editing} {busy} {error} onsave={save} onclose={closeEditor}/>
-{:else if settings}<Settings {config} {busy} {error} message={notice} {run} {notify} onclose={()=>{settings=false;error='';}} onchange={async(c)=>{await call('list',{Config:c,Filter:{Limit:1}});config=c;selected=null;filter.Offset=0;await load();}}/>
+{#if managing}<Collections {config} onclose={()=>{managing=false;void search(false);}} onchanged={()=>{}}/>
+{:else if editor}<Editor {config} bookmark={editing} {busy} {error} onsave={save} onclose={closeEditor}/>
+{:else if settings}<Settings {config} {busy} {error} message={notice} {run} {notify} onclose={()=>{settings=false;error='';void search(false);}} onchange={async(c)=>{await call('list',{Config:c,Filter:{Limit:1}});config=c;selected=null;filter.Offset=0;await load();}}/>
 {:else if filters}<Filters {filter} onclose={()=>filters=false} onapply={applyFilters}/>
-{:else if selected}<Story bookmark={selected} {busy} {error} message={notice} {resolved} onclose={closeStory} onedit={()=>showEditor(selected)} onrefresh={refresh} ondelete={remove} ondestination={destination} oncopy={copyDetails}/>{/if}
+{:else if selected}<Story {config} bookmark={selected} {busy} {error} message={notice} {resolved} onclose={closeStory} onedit={()=>showEditor(selected)} onrefresh={refresh} ondelete={remove} ondestination={destination} oncopy={copyDetails}/>{/if}
 
 </div>

@@ -13,11 +13,22 @@ test.beforeEach(async({page})=>{
   let records:any[]=[{id:1,url:'https://archiveofourown.org/works/123',site:'ao3',title:metadata.title,author:'Aster Vale',status:'reading',chapter:4,tags:['weekend reading'],notes:'Pick up at the lighthouse.',rating:4,review_notes:'',created_at:'2026-09-01T00:00:00Z',updated_at:'2026-09-01T00:00:00Z',last_read_at:'2026-09-05T00:00:00Z',metadata,effective:metadata,progress:{known:true,read:4,published:12,unread:8,percent:33}}];
   records.push({...structuredClone(records[0]),id:2,title:'All the Light We Leave Behind',author:'paperboats',site:'ffn',status:'planned',chapter:0,rating:0,progress:{known:true,read:0,published:8,unread:8,percent:0}});
   records.push({...structuredClone(records[0]),id:3,title:'A Quiet Kind of Magic',author:'winterletters',status:'completed',chapter:12,rating:5,progress:{known:true,read:12,published:12,unread:0,percent:100}});
+  let collections:any[]=[];const members:Record<string,number[]>={};
   (window as any).testCalls=[];
-  (window as any).go={main:{App:{Copy:async(action:string,json:string)=>{(window as any).testCalls.push({action:'copy',kind:action,...JSON.parse(json)});},Confirm:async()=>true,Cancel:async()=>{},Pick:async()=>'',Open:async(action:string,json:string)=>{(window as any).testCalls.push({action:'open',kind:action,...JSON.parse(json)});},Call:async(action:string,json:string)=>{
+  (window as any).go={main:{App:{ArtworkInfo:async()=>'[]',ArtworkData:async()=>'',Copy:async(action:string,json:string)=>{(window as any).testCalls.push({action:'copy',kind:action,...JSON.parse(json)});},Confirm:async()=>true,Cancel:async()=>{},Pick:async()=>'',Open:async(action:string,json:string)=>{(window as any).testCalls.push({action:'open',kind:action,...JSON.parse(json)});},Call:async(action:string,json:string)=>{
    const r=JSON.parse(json);(window as any).testCalls.push({action,...r});
+   if(action==='organize'){
+    const f=r.Feature;
+    if(f.action==='collections')return JSON.stringify(collections.map(c=>({...c,count:(members[c.id]||[]).length})));
+    if(f.action==='collection-save'){const c={...f.collection,id:f.collection.id||String(collections.length+1),count:0};collections=collections.filter(v=>v.id!==c.id);collections.push(c);return JSON.stringify(c);}
+    if(f.action==='collection-delete'){collections=collections.filter(c=>c.id!==f.collection_id);return 'null';}
+    if(f.action==='membership'){members[f.collection_id]=f.remove?(members[f.collection_id]||[]).filter(id=>!f.ids.includes(id)):[...new Set([...(members[f.collection_id]||[]),...f.ids])];return 'null';}
+    if(f.action==='tags')return JSON.stringify(['Angst','Found Family']);
+    if(f.action==='count')return String(records.length);
+    return '[]';
+   }
    if(action==='defaults')return JSON.stringify({Data:'/tmp/test/library.sqlite3',Sessions:'/tmp/test/sessions',UserAgent:''});
-   if(action==='list')return JSON.stringify(records.filter(b=>(!r.Filter?.Query||b.title.includes(r.Filter.Query))&&(!r.Filter?.Status||b.status===r.Filter.Status)));
+   if(action==='list')return JSON.stringify(records.filter(b=>(!r.Filter?.Query||b.title.includes(r.Filter.Query))&&(!r.Filter?.Status||b.status===r.Filter.Status)&&(!r.Filter?.Collection||(members[r.Filter.Collection]||[]).includes(b.id))));
    if(action==='resolve')return JSON.stringify(`https://archiveofourown.org/works/123/chapters/${r.Chapter||5}`);
    if(action==='get')return JSON.stringify(records.find(b=>b.id===r.ID));
    if(action==='add'){
@@ -227,4 +238,46 @@ test('rating hover previews preceding stars without changing the saved rating',a
  await expect(page.locator('.star-button.filled')).toHaveCount(3);
  await page.getByRole('button',{name:'Save changes',exact:true}).click();
  expect(await page.evaluate(()=>(window as any).testCalls.find((c:any)=>c.action==='update').Patch)).toEqual({Rating:3});
+});
+
+
+test('manual collections support bulk assignment, filtering and deletion without deleting stories',async({page})=>{
+ await page.getByRole('button',{name:'Manage collections',exact:true}).click();
+ await page.getByLabel('Name',{exact:true}).fill('trauma-inducing');
+ await page.getByRole('button',{name:'Save collection',exact:true}).click();
+ await page.getByRole('button',{name:'Preview matching stories',exact:true}).click();
+ await page.getByRole('button',{name:'Select page',exact:true}).click();
+ await page.getByRole('button',{name:'Add selected to collection',exact:true}).click();
+ await screenshot(page,'collections-v090');
+ await page.getByRole('button',{name:'Close',exact:true}).click();
+ await page.getByLabel('Collection',{exact:true}).selectOption('1');
+ await expect(page.locator('article.book')).toHaveCount(3);
+ await page.getByRole('button',{name:'Manage collections',exact:true}).click();
+ await page.getByRole('button',{name:'trauma-inducing · 3',exact:true}).click();
+ await page.getByRole('button',{name:'Delete collection',exact:true}).click();
+ await page.getByRole('button',{name:'Close',exact:true}).click();
+ await expect(page.locator('article.book')).toHaveCount(3);
+});
+
+test('appearance preferences preserve cards and show overlapping detail artwork',async({page})=>{
+ await page.getByRole('button',{name:'Settings',exact:true}).click();
+ await page.getByRole('button',{name:'Artwork appearance',exact:true}).click();
+ await page.getByLabel('Library cover appearance',{exact:true}).selectOption('portrait');
+ await page.getByRole('button',{name:'Close',exact:true}).click();
+ await expect(page.locator('.card-portrait')).toHaveCount(3);
+ await expect(page.locator('.book .site-watermark')).toHaveCount(0);
+ await screenshot(page,'portrait-v090');
+ await page.getByRole('button',{name:'Open The Cartographer’s Moon',exact:true}).click();
+ await expect(page.locator('.story-banner')).toBeVisible();
+ await expect(page.locator('.story-cover')).toBeVisible();
+ await screenshot(page,'detail-art-v090');
+ await page.getByRole('button',{name:'Close',exact:true}).click();
+ await page.getByRole('button',{name:'Settings',exact:true}).click();
+ await page.getByRole('button',{name:'Artwork appearance',exact:true}).click();
+ await page.getByLabel('Library cover appearance',{exact:true}).selectOption('background');
+ await page.getByRole('button',{name:'Close',exact:true}).click();
+ await expect(page.locator('.card-background')).toHaveCount(3);
+ await screenshot(page,'background-v090');
+ await page.reload();
+ await expect(page.locator('.card-background')).toHaveCount(3);
 });

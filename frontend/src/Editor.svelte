@@ -1,5 +1,8 @@
 <script lang="ts">
  import {statuses,statusLabel,patchBetween,type Bookmark,type Metadata} from './api';
+ import ArtEditor from './ArtEditor.svelte';
+ import type {Config} from './api';
+ export let config:Config;
  import Sheet from './Sheet.svelte';
  import Icon from './Icon.svelte';
  import Select from './Select.svelte';
@@ -59,4 +62,5 @@
    <div class="form-actions"><button type="button" class="quiet" onclick={onclose}>Cancel</button><button class="primary" type="submit"><Icon name="check"/>{bookmark?'Save changes':'Save story'}</button></div>
   </fieldset>
  </form>
+{#if bookmark}<ArtEditor {config} id={bookmark.id} site={bookmark.site}/>{/if}
 </Sheet>

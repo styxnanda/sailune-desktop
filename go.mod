@@ -3,7 +3,7 @@ module github.com/styxnanda/sailune-desktop
 go 1.25.0
 
 require (
-	github.com/styxnanda/sailune-go v0.0.0-20260919124210-84f0017bc00f
+	github.com/styxnanda/sailune-go v0.9.0
 	github.com/wailsapp/wails/v2 v2.15.0
 )
 

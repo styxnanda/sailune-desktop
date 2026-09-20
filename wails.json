@@ -7,5 +7,5 @@
  "frontend:dev:watcher": "npm run dev",
  "frontend:dev:serverUrl": "auto",
  "author": {"name": "Sailune"},
- "info": {"companyName": "Sailune", "productName": "Sailune Desktop", "productVersion": "0.1.0", "copyright": "Sailune contributors", "comments": "Personal fanfiction bookmarks, powered by Sailune-Go"}
+ "info": {"companyName": "Sailune", "productName": "Sailune Desktop", "productVersion": "0.9.0", "copyright": "Sailune contributors", "comments": "Personal fanfiction bookmarks, powered by Sailune-Go"}
 }

@@ -3,6 +3,7 @@
  import Sheet from './Sheet.svelte';
  import Icon from './Icon.svelte';
  import Select from './Select.svelte';
+ import {coverMode,detailArt} from './appearance';
  import {theme} from './theme';
  export let config:Config;
  export let busy=false;
@@ -13,7 +14,7 @@
  export let notify:(message:string)=>void;
  export let onchange:(config:Config)=>Promise<void>;
  let section='', draft={...config},site='ao3',browser='chromium/chrome',profile='',consent=false,session:Session|null=null,transferPath='',merge=true;
- const names:Record<string,string>={connect:'Connected websites',backup:'Backup',import:'Import',storage:'Library',theme:'Customize theme'};
+ const names:Record<string,string>={connect:'Connected websites',backup:'Backup',import:'Import',storage:'Library',theme:'Customize theme',artwork:'Artwork appearance'};
  const filename=(path:string)=>path.split(/[\\/]/).pop()||path;
  const payload=()=>({Config:config,Site:site});
  async function choose(kind:string,set:(s:string)=>void){const p=await pick(kind);if(p)set(p);}
@@ -27,10 +28,12 @@
  <fieldset disabled={busy}>
  {#if !section}
   <div class="preference-list">
-   {#each [['connect','link','Connected websites'],['backup','download','Save a backup'],['import','upload','Import collection'],['storage','folder','Library'],['theme','moon','Customize theme']] as [id,icon,title]}
+   {#each [['connect','link','Connected websites'],['backup','download','Save a backup'],['import','upload','Import collection'],['storage','folder','Library'],['theme','moon','Customize theme'],['artwork','book','Artwork appearance']] as [id,icon,title]}
     <button class="preference" onclick={()=>section=id}><span class="preference-icon"><Icon name={icon} size={30}/></span><span><strong>{title}</strong></span><Icon name="arrow"/></button>
    {/each}
-  </div><p class="quiet-caption">Sailune · 0.1.0</p>
+  </div><p class="quiet-caption">Sailune · 0.9.0</p>
+ {:else if section==='artwork'}
+ <label>Library cover appearance<select aria-label="Library cover appearance" bind:value={$coverMode}><option value="hidden">Hidden · current minimal cards</option><option value="portrait">Portrait · cover on the left</option><option value="background">Background · translucent cards</option></select></label><label class="toggle"><input type="checkbox" bind:checked={$detailArt}/><span>Show artwork in story details</span></label><p class="hint">Hidden artwork stays saved. These preferences apply only to this device.</p>
  {:else if section==='theme'}
   <div class="theme-choices"><button class="theme-choice" class:chosen={$theme==='light'} aria-pressed={$theme==='light'} onclick={()=>theme.set('light')}><span class="theme-preview light-preview"><i></i><i></i><i></i></span><span>Light{#if $theme==='light'}<Icon name="check"/>{/if}</span></button><button class="theme-choice" class:chosen={$theme==='dark'} aria-pressed={$theme==='dark'} onclick={()=>theme.set('dark')}><span class="theme-preview dark-preview"><i></i><i></i><i></i></span><span>Dark{#if $theme==='dark'}<Icon name="check"/>{/if}</span></button></div>
  {:else if section==='connect'}
@@ -45,12 +48,12 @@
   <details class="disclosure"><summary>Other methods<Icon name="plus"/></summary><p class="hint">You can also use a sign-in file exported from your browser (cookies.txt), or move an older Sailune sign-in.</p><div class="button-row"><button disabled={!consent} onclick={()=>run(async()=>{const p=await pick('file');if(p)await auth('session-file',p);})}><Icon name="upload"/>Use a sign-in file</button><button onclick={()=>run(async()=>{const p=await pick('directory');if(p&&await confirmAction('Move this older sign-in to Sailune? It will be stored securely and the old unprotected file will be removed.')){await call('session-migrate',{...payload(),Path:p,Consent:true});notify('Sign-in imported.');}})}>Move an older sign-in</button></div><p class="hint">If a browser won’t connect, try a sign-in file or another browser. Some websites may still ask for a browser check.</p></details>
   <button class="text-button danger" onclick={()=>run(async()=>{if(await confirmAction('Disconnect this website from Sailune? You’ll stay signed in to your browser.')){await call('session-clear',{...payload(),Consent:true});session=null;notify('Website disconnected.');}})}>Disconnect website</button>
  {:else if section==='backup'}
-  <p class="hint">Export bookmarks and notes. Website sign-ins are excluded.</p><button class="primary roomy" onclick={()=>run(async()=>{const p=await pick('export');if(p){await call('export',{Config:config,Path:p});notify('Your backup is saved.');}})}>Save a backup<Icon name="download"/></button>
+  <p class="hint">Export stories, collections, and both artworks in one ZIP backup. Website sign-ins are excluded.</p><button class="primary roomy" onclick={()=>run(async()=>{const p=await pick('export');if(p){await call('export',{Config:config,Path:p});notify('Your backup is saved.');}})}>Save a backup<Icon name="download"/></button>
  {:else if section==='import'}
   <p class="hint">Import a Sailune backup or an older collection.</p>
   <button class="file-choice" onclick={()=>run(()=>choose('file',p=>transferPath=p))}><Icon name="folder" size={30}/><span>{transferPath?filename(transferPath):'Choose backup'}</span><Icon name="plus"/></button>
-  <label class="toggle"><input type="checkbox" bind:checked={merge}/><span>Merge with current library<small>Duplicates are skipped.</small></span></label>{#if !merge}<p class="hint">Restoring a whole collection needs an empty library. You can choose one in Library. Your original backup is kept.</p>{/if}
-  <button class="primary roomy" disabled={!transferPath} onclick={()=>run(async()=>{const r=await call<{imported:number;skipped:number}>('import',{Config:config,Path:transferPath,Merge:merge});notify(`${r.imported} imported.${r.skipped?` ${r.skipped} skipped.`:''}`);})}>Import<Icon name="arrow"/></button>
+  <label class="toggle"><input type="checkbox" bind:checked={merge}/><span>Merge with current library<small>Existing notes, artwork, and collection rules are kept. Missing artwork and collection memberships are added.</small></span></label>{#if !merge}<p class="hint">Restoring a whole collection needs an empty library. You can choose one in Library. Your original backup is kept.</p>{/if}
+  <button class="primary roomy" disabled={!transferPath} onclick={()=>run(async()=>{const r=await call<{imported:number;skipped:number;collections:number;artwork:number;conflicts:number}>('import',{Config:config,Path:transferPath,Merge:merge});notify(`${r.imported} stories added, ${r.skipped} existing; ${r.collections||0} collections, ${r.artwork||0} artwork slots added; ${r.conflicts||0} conflicts retained.`);})}>Import<Icon name="arrow"/></button>
  {:else if section==='storage'}
   <h3>Your library</h3><p class="hint">Stored on this device.</p><div class="file-location"><Icon name="book" size={30}/><span>{filename(draft.Data)||'Your collection'}</span></div>
   <div class="button-row"><button onclick={()=>run(()=>choose('database',p=>draft.Data=p))}>Choose a library</button><button onclick={()=>run(()=>choose('new-database',p=>draft.Data=p))}><Icon name="plus"/>New library</button></div>

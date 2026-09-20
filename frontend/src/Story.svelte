@@ -1,4 +1,12 @@
 <script lang="ts">
+ import Artwork from './Artwork.svelte';
+ import ArtEditor from './ArtEditor.svelte';
+ import AssignCollection from './AssignCollection.svelte';
+ import {detailArt} from './appearance';
+ import type {Config} from './api';
+ export let config:Config;
+ let artRevision=0,largePreview=false;
+
  import type {Bookmark} from './api';
  import {statusLabel} from './api';
  import Sheet from './Sheet.svelte';
@@ -19,13 +27,15 @@
  const date=(v?:string)=>!v||v.startsWith('0001')?'Not yet':new Date(v).toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'});
  $: b=bookmark;
 </script>
-<Sheet title={b.title||b.effective.title||'Untitled story'} subtitle={`by ${b.author||'Unknown author'}`} {busy} {error} {message} {onclose} wide>
+<Sheet hideHeading={$detailArt} title={b.title||b.effective.title||'Untitled story'} subtitle={`by ${b.author||'Unknown author'}`} {busy} {error} {message} {onclose} wide>
+ {#if $detailArt}<div class="story-art-header"><div class="story-banner"><Artwork {config} id={b.id} site={b.site} role="background" small={false} revision={artRevision}/></div><button class="story-cover" aria-label="Preview cover artwork" onclick={()=>largePreview=!largePreview}><Artwork {config} id={b.id} site={b.site} small={false} revision={artRevision}/></button></div>{#if largePreview}<div class="large-art-preview"><Artwork {config} id={b.id} site={b.site} small={false} revision={artRevision}/><button onclick={()=>largePreview=false}>Close preview</button></div>{/if}<h2 class="art-story-title">{b.title||'Untitled story'}</h2><p class="art-story-author">by {b.author||'Unknown author'}</p>{/if}
  <div class="story-reading">
   <div><span class="overline">{statusLabel(b.status)}</span><p class="reading-number">{b.chapter}<span>{b.progress.known?` / ${b.progress.published}`:' chapters read'}</span></p></div>
   <button class="primary" disabled={busy} onclick={()=>ondestination(true,true)}>Read next<Icon name="arrow"/></button>
  </div>
  {#if b.progress.known}<div class="reading-line"><span style:width={`${b.progress.percent}%`}></span></div>{/if}
  <div class="story-quick-actions"><button disabled={busy} onclick={onedit}><Icon name="edit"/>Edit bookmark</button><button disabled={busy} onclick={onrefresh}><Icon name="refresh"/>Refresh details</button><button disabled={busy} onclick={()=>ondestination(false,true)}><Icon name="external"/>Open website</button></div>
+ <AssignCollection {config} id={b.id}/><ArtEditor {config} id={b.id} site={b.site} onchange={()=>artRevision++}/>
  <div class="story-facts"><span>{b.effective.words?b.effective.words.toLocaleString()+' words':'Length unknown'}</span><span>{b.effective.complete?'Finished':'Still being written'}</span><span>{b.effective.language||'Language unknown'}</span></div>
  <p class="story-summary">{b.effective.summary||'No summary.'}</p>
  {#if b.effective.fandoms?.length}<div class="tags">{#each b.effective.fandoms as tag}<span>{tag}</span>{/each}</div>{/if}
